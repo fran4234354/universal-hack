@@ -1,34 +1,23 @@
---[[
-  hack-multiversal - Script base por Copilot + fran4234354
-  Estructura: PIN, mensaje bienvenida, menú principal y navegación.
-  No contiene hacks aún, solo UI y lógica principal.
-]]
+-- hack-multiversal con menús de hacks visuales (UI)
+-- fran4234354 + Copilot
 
--- Utilidades básicas
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local StarterGui = game:GetService("StarterGui")
-local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 
--- El PIN correcto (en minúsculas)
 local PIN_CORRECTO = "zeus/hais"
 
--- Función para comparar PIN, insensible a mayúsculas/minúsculas y espacios
 local function checarPIN(str)
     if not str then return false end
     return string.lower(str:gsub("%s+", "")) == PIN_CORRECTO
 end
 
--- Crear GUI principal
 local function crearGUI()
-    local CoreGui = game:GetService("CoreGui")
     if CoreGui:FindFirstChild("HackMultiversal") then
         CoreGui.HackMultiversal:Destroy()
     end
 
-    -- Contenedor principal
     local gui = Instance.new("ScreenGui")
     gui.Name = "HackMultiversal"
     gui.ResetOnSpawn = false
@@ -109,7 +98,7 @@ local function crearGUI()
     -- MENSAJE de bienvenida (invisible al inicio)
     local labelBienvenida = Instance.new("TextLabel", gui)
     labelBienvenida.Size = UDim2.new(0.55,0,0.11,0)
-    labelBienvenida.Position = UDim2.new(0.5,-0.55*0.5*gui.AbsoluteSize.X,0.43,0)
+    labelBienvenida.Position = UDim2.new(0.5,0,0.43,0)
     labelBienvenida.AnchorPoint = Vector2.new(0.5,0.5)
     labelBienvenida.BackgroundTransparency = 1
     labelBienvenida.Text = "Bienvenido a hack multiversal"
@@ -121,7 +110,7 @@ local function crearGUI()
     labelBienvenida.ZIndex = 100
     labelBienvenida.Visible = false
 
-    -- Menú principal (invisible al inicio)
+    -- Menú principal
     local menu = Instance.new("Frame", gui)
     menu.Name = "MenuPrincipal"
     menu.Size = UDim2.new(0, 410, 0, 340)
@@ -131,7 +120,7 @@ local function crearGUI()
     menu.Visible = false
     menu.ZIndex = 20
 
-    -- Hacer el menú arrastrable
+    -- Drag bar
     local dragBar = Instance.new("TextLabel", menu)
     dragBar.Size = UDim2.new(1, 0, 0, 36)
     dragBar.BackgroundTransparency = 1
@@ -147,12 +136,12 @@ local function crearGUI()
     local botones = {"99 noches", "Roba un Brainrots", "Universal"}
     local paneles = {}
 
-    for i, nombre in ipairs(botones) do
-        local btn = Instance.new("TextButton", menu)
+    local function crearBotonMenu(parent, texto, y)
+        local btn = Instance.new("TextButton", parent)
         btn.Size = UDim2.new(0.7,0,0,42)
-        btn.Position = UDim2.new(0.15,0,0.23 + (i-1)*0.21,0)
+        btn.Position = UDim2.new(0.15,0,0.23 + y,0)
         btn.BackgroundColor3 = Color3.fromRGB(35,35,35)
-        btn.Text = nombre
+        btn.Text = texto
         btn.TextColor3 = Color3.new(1,1,1)
         btn.TextStrokeTransparency = 0
         btn.TextStrokeColor3 = Color3.new(0,0,0)
@@ -160,7 +149,11 @@ local function crearGUI()
         btn.TextSize = 22
         btn.ZIndex = 22
         btn.AutoButtonColor = true
+        return btn
+    end
 
+    for i, nombre in ipairs(botones) do
+        local btn = crearBotonMenu(menu, nombre, (i-1)*0.21)
         -- Crear panel oculto para cada menú
         local panel = Instance.new("Frame", gui)
         panel.Name = "Panel_"..nombre:gsub(" ","_")
@@ -209,7 +202,7 @@ local function crearGUI()
         end)
     end
 
-    -- Drag system para el menú principal y paneles
+    -- DRAG SYSTEM
     local function hacerArrastrable(frame, dragLabel)
         local dragging, dragInput, startPos, startMousePos
         dragLabel = dragLabel or frame
@@ -268,17 +261,123 @@ local function crearGUI()
         end
     end)
 
-    -- Cuando la GUI se destruye, limpiar
+    -- --- PANEL DE HACKS PARA CADA JUEGO ---
+    -- Helper para crear botón hack
+    local function crearBotonHack(panel, texto, y)
+        local btn = Instance.new("TextButton", panel)
+        btn.Size = UDim2.new(0.65,0,0,32)
+        btn.Position = UDim2.new(0.175,0,0.12+y,0)
+        btn.BackgroundColor3 = Color3.fromRGB(45,45,45)
+        btn.Text = texto
+        btn.TextColor3 = Color3.new(1,1,1)
+        btn.TextStrokeTransparency = 0
+        btn.TextStrokeColor3 = Color3.new(0,0,0)
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 18
+        btn.ZIndex = 33
+        btn.AutoButtonColor = true
+        return btn
+    end
+
+    local function crearSeccion(panel, titulo, y)
+        local label = Instance.new("TextLabel", panel)
+        label.Size = UDim2.new(0.85,0,0,30)
+        label.Position = UDim2.new(0.075,0,0.07+y,0)
+        label.BackgroundTransparency = 1
+        label.Text = titulo
+        label.TextColor3 = Color3.new(1,1,1)
+        label.TextStrokeTransparency = 0
+        label.TextStrokeColor3 = Color3.new(0,0,0)
+        label.Font = Enum.Font.SourceSansBold
+        label.TextSize = 19
+        label.ZIndex = 34
+        return label
+    end
+
+    -- 99 Noches
+    do
+        local panel = paneles["99 noches"]
+        local y = 0
+
+        crearSeccion(panel, "Hacks principales", y)
+        y = y + 0.09
+        crearBotonHack(panel, "Kill Aura", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Volar", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Velocidad", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Recoger ítems", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Teleport a hoguera", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Wallhack (ver fuego, máquina, comida)", y)
+        y = y + 0.07
+
+        crearSeccion(panel, "Tirar todos los ítems:", y)
+        y = y + 0.08
+        crearBotonHack(panel, "Tirar comida", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Tirar madera", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Tirar metal", y)
+        y = y + 0.07
+
+        crearSeccion(panel, "Auto:", y)
+        y = y + 0.08
+        crearBotonHack(panel, "Auto comer/curar", y)
+    end
+
+    -- Roba un Brainrots
+    do
+        local panel = paneles["Roba un Brainrots"]
+        local y = 0
+
+        crearSeccion(panel, "Hacks principales", y)
+        y = y + 0.09
+        crearBotonHack(panel, "Kill Aura", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Teleport zombies", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Ver infectados", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Auto recoger ítems", y)
+        y = y + 0.07
+
+        crearSeccion(panel, "Tirar todos los ítems:", y)
+        y = y + 0.08
+        crearBotonHack(panel, "Tirar comida", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Tirar madera", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Tirar metal", y)
+    end
+
+    -- Universal
+    do
+        local panel = paneles["Universal"]
+        local y = 0
+
+        crearSeccion(panel, "Hacks universales", y)
+        y = y + 0.09
+        crearBotonHack(panel, "Volar", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Velocidad", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Noclip", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Teleport a jugador", y)
+        y = y + 0.07
+        crearBotonHack(panel, "Wallhack universal", y)
+    end
+
+    -- Limpiar GUI al cerrar
     gui.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            gui:Destroy()
-        end
+        if not parent then gui:Destroy() end
     end)
 
     return gui, menu, paneles
 end
 
--- Ejecutar GUI
 crearGUI()
-
--- Fin del script base (ahora puedes continuar con la lógica de hacks en cada panel)
+-- Fin
