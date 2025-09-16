@@ -1,0 +1,284 @@
+--[[
+  hack-multiversal - Script base por Copilot + fran4234354
+  Estructura: PIN, mensaje bienvenida, menú principal y navegación.
+  No contiene hacks aún, solo UI y lógica principal.
+]]
+
+-- Utilidades básicas
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+-- El PIN correcto (en minúsculas)
+local PIN_CORRECTO = "zeus/hais"
+
+-- Función para comparar PIN, insensible a mayúsculas/minúsculas y espacios
+local function checarPIN(str)
+    if not str then return false end
+    return string.lower(str:gsub("%s+", "")) == PIN_CORRECTO
+end
+
+-- Crear GUI principal
+local function crearGUI()
+    local CoreGui = game:GetService("CoreGui")
+    if CoreGui:FindFirstChild("HackMultiversal") then
+        CoreGui.HackMultiversal:Destroy()
+    end
+
+    -- Contenedor principal
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "HackMultiversal"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.Parent = CoreGui
+
+    -- Fondo oscurecido para PIN
+    local fondoPIN = Instance.new("Frame", gui)
+    fondoPIN.Size = UDim2.new(1,0,1,0)
+    fondoPIN.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    fondoPIN.BackgroundTransparency = 0.5
+    fondoPIN.ZIndex = 10
+
+    -- Cuadro del PIN
+    local cuadroPIN = Instance.new("Frame", fondoPIN)
+    cuadroPIN.Size = UDim2.new(0, 350, 0, 160)
+    cuadroPIN.Position = UDim2.new(0.5, -175, 0.5, -80)
+    cuadroPIN.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    cuadroPIN.BorderSizePixel = 0
+    cuadroPIN.AnchorPoint = Vector2.new(0.5,0.5)
+    cuadroPIN.ZIndex = 11
+
+    -- Título PIN
+    local tituloPIN = Instance.new("TextLabel", cuadroPIN)
+    tituloPIN.Size = UDim2.new(1,0,0,40)
+    tituloPIN.Position = UDim2.new(0,0,0,0)
+    tituloPIN.Text = "Ingresa tu PIN para acceder"
+    tituloPIN.TextColor3 = Color3.new(1,1,1)
+    tituloPIN.TextStrokeTransparency = 0
+    tituloPIN.TextStrokeColor3 = Color3.new(0,0,0)
+    tituloPIN.BackgroundTransparency = 1
+    tituloPIN.Font = Enum.Font.SourceSansBold
+    tituloPIN.TextSize = 24
+    tituloPIN.ZIndex = 12
+
+    -- Caja de texto del PIN
+    local inputPIN = Instance.new("TextBox", cuadroPIN)
+    inputPIN.Size = UDim2.new(0.8,0,0,38)
+    inputPIN.Position = UDim2.new(0.1,0,0.45,0)
+    inputPIN.PlaceholderText = "PIN..."
+    inputPIN.Text = ""
+    inputPIN.TextColor3 = Color3.new(1,1,1)
+    inputPIN.TextStrokeTransparency = 0
+    inputPIN.TextStrokeColor3 = Color3.new(0,0,0)
+    inputPIN.BackgroundColor3 = Color3.fromRGB(35,35,35)
+    inputPIN.Font = Enum.Font.SourceSansBold
+    inputPIN.TextSize = 22
+    inputPIN.ClearTextOnFocus = false
+    inputPIN.ZIndex = 12
+
+    -- Botón de enviar PIN
+    local botonPIN = Instance.new("TextButton", cuadroPIN)
+    botonPIN.Size = UDim2.new(0.6,0,0,34)
+    botonPIN.Position = UDim2.new(0.2,0,0.75,0)
+    botonPIN.Text = "Ingresar"
+    botonPIN.TextColor3 = Color3.new(1,1,1)
+    botonPIN.TextStrokeTransparency = 0
+    botonPIN.TextStrokeColor3 = Color3.new(0,0,0)
+    botonPIN.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    botonPIN.Font = Enum.Font.SourceSansBold
+    botonPIN.TextSize = 20
+    botonPIN.ZIndex = 12
+    botonPIN.AutoButtonColor = true
+
+    -- Mensaje de error
+    local labelError = Instance.new("TextLabel", cuadroPIN)
+    labelError.Size = UDim2.new(1,0,0,22)
+    labelError.Position = UDim2.new(0,0,1,2)
+    labelError.Text = ""
+    labelError.TextColor3 = Color3.fromRGB(255,80,80)
+    labelError.TextStrokeTransparency = 0.2
+    labelError.TextStrokeColor3 = Color3.new(0,0,0)
+    labelError.TextSize = 18
+    labelError.BackgroundTransparency = 1
+    labelError.Font = Enum.Font.SourceSansBold
+    labelError.ZIndex = 13
+
+    -- MENSAJE de bienvenida (invisible al inicio)
+    local labelBienvenida = Instance.new("TextLabel", gui)
+    labelBienvenida.Size = UDim2.new(0.55,0,0.11,0)
+    labelBienvenida.Position = UDim2.new(0.5,-0.55*0.5*gui.AbsoluteSize.X,0.43,0)
+    labelBienvenida.AnchorPoint = Vector2.new(0.5,0.5)
+    labelBienvenida.BackgroundTransparency = 1
+    labelBienvenida.Text = "Bienvenido a hack multiversal"
+    labelBienvenida.TextColor3 = Color3.new(1,1,1)
+    labelBienvenida.TextStrokeTransparency = 0
+    labelBienvenida.TextStrokeColor3 = Color3.new(0,0,0)
+    labelBienvenida.Font = Enum.Font.SourceSansBold
+    labelBienvenida.TextSize = 34
+    labelBienvenida.ZIndex = 100
+    labelBienvenida.Visible = false
+
+    -- Menú principal (invisible al inicio)
+    local menu = Instance.new("Frame", gui)
+    menu.Name = "MenuPrincipal"
+    menu.Size = UDim2.new(0, 410, 0, 340)
+    menu.Position = UDim2.new(0.5, -205, 0.5, -170)
+    menu.BackgroundColor3 = Color3.fromRGB(15,15,15)
+    menu.BorderSizePixel = 0
+    menu.Visible = false
+    menu.ZIndex = 20
+
+    -- Hacer el menú arrastrable
+    local dragBar = Instance.new("TextLabel", menu)
+    dragBar.Size = UDim2.new(1, 0, 0, 36)
+    dragBar.BackgroundTransparency = 1
+    dragBar.Text = "hack-multiversal"
+    dragBar.TextColor3 = Color3.new(1,1,1)
+    dragBar.TextStrokeTransparency = 0
+    dragBar.TextStrokeColor3 = Color3.new(0,0,0)
+    dragBar.Font = Enum.Font.SourceSansBold
+    dragBar.TextSize = 28
+    dragBar.ZIndex = 21
+
+    -- Botones principales
+    local botones = {"99 noches", "Roba un Brainrots", "Universal"}
+    local paneles = {}
+
+    for i, nombre in ipairs(botones) do
+        local btn = Instance.new("TextButton", menu)
+        btn.Size = UDim2.new(0.7,0,0,42)
+        btn.Position = UDim2.new(0.15,0,0.23 + (i-1)*0.21,0)
+        btn.BackgroundColor3 = Color3.fromRGB(35,35,35)
+        btn.Text = nombre
+        btn.TextColor3 = Color3.new(1,1,1)
+        btn.TextStrokeTransparency = 0
+        btn.TextStrokeColor3 = Color3.new(0,0,0)
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 22
+        btn.ZIndex = 22
+        btn.AutoButtonColor = true
+
+        -- Crear panel oculto para cada menú
+        local panel = Instance.new("Frame", gui)
+        panel.Name = "Panel_"..nombre:gsub(" ","_")
+        panel.Visible = false
+        panel.Size = UDim2.new(0,410,0,340)
+        panel.Position = UDim2.new(0.5,-205,0.5,-170)
+        panel.BackgroundColor3 = Color3.fromRGB(15,15,15)
+        panel.BorderSizePixel = 0
+        panel.ZIndex = 30
+
+        -- Título del panel
+        local titulo = Instance.new("TextLabel", panel)
+        titulo.Size = UDim2.new(1,0,0,36)
+        titulo.BackgroundTransparency = 1
+        titulo.Text = "hack-multiversal"
+        titulo.TextColor3 = Color3.new(1,1,1)
+        titulo.TextStrokeTransparency = 0
+        titulo.TextStrokeColor3 = Color3.new(0,0,0)
+        titulo.Font = Enum.Font.SourceSansBold
+        titulo.TextSize = 28
+        titulo.ZIndex = 31
+
+        -- Flecha para volver
+        local volver = Instance.new("TextButton", panel)
+        volver.Size = UDim2.new(0,36,0,36)
+        volver.Position = UDim2.new(0,10,0,10)
+        volver.Text = "<"
+        volver.BackgroundColor3 = Color3.fromRGB(30,30,30)
+        volver.TextColor3 = Color3.new(1,1,1)
+        volver.TextStrokeTransparency = 0
+        volver.TextStrokeColor3 = Color3.new(0,0,0)
+        volver.Font = Enum.Font.SourceSansBold
+        volver.TextSize = 24
+        volver.ZIndex = 32
+        volver.AutoButtonColor = true
+        volver.MouseButton1Click:Connect(function()
+            panel.Visible = false
+            menu.Visible = true
+        end)
+
+        paneles[nombre] = panel
+
+        btn.MouseButton1Click:Connect(function()
+            menu.Visible = false
+            panel.Visible = true
+        end)
+    end
+
+    -- Drag system para el menú principal y paneles
+    local function hacerArrastrable(frame, dragLabel)
+        local dragging, dragInput, startPos, startMousePos
+        dragLabel = dragLabel or frame
+        dragLabel.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                startPos = frame.Position
+                startMousePos = input.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+        dragLabel.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local delta = input.Position - startMousePos
+                frame.Position = startPos + UDim2.new(0, delta.X, 0, delta.Y)
+            end
+        end)
+    end
+
+    hacerArrastrable(menu, dragBar)
+    for _, panel in pairs(paneles) do
+        hacerArrastrable(panel, panel:FindFirstChildOfClass("TextLabel"))
+    end
+
+    -- Mostrar mensaje de bienvenida con fade-out
+    local function mostrarBienvenida()
+        labelBienvenida.Visible = true
+        labelBienvenida.TextTransparency = 0
+        labelBienvenida.TextStrokeTransparency = 0
+        local tween = TweenService:Create(labelBienvenida, TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 1, TextStrokeTransparency = 1})
+        tween:Play()
+        tween.Completed:Connect(function()
+            labelBienvenida.Visible = false
+        end)
+    end
+
+    -- Lógica del PIN
+    botonPIN.MouseButton1Click:Connect(function()
+        if checarPIN(inputPIN.Text) then
+            fondoPIN.Visible = false
+            menu.Visible = true
+            mostrarBienvenida()
+        else
+            labelError.Text = "PIN incorrecto"
+            wait(1.2)
+            labelError.Text = ""
+        end
+    end)
+    inputPIN.FocusLost:Connect(function(enter)
+        if enter then
+            botonPIN:Activate()
+        end
+    end)
+
+    -- Cuando la GUI se destruye, limpiar
+    gui.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            gui:Destroy()
+        end
+    end)
+
+    return gui, menu, paneles
+end
+
+-- Ejecutar GUI
+crearGUI()
+
+-- Fin del script base (ahora puedes continuar con la lógica de hacks en cada panel)
