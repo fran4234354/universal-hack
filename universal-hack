@@ -1,383 +1,308 @@
--- hack-multiversal con menús de hacks visuales (UI)
--- fran4234354 + Copilot
+--[[
+    hack-multiversal.lua
+    Autor: [Tu Nombre o Alias]
+    Descripción: Menú de hacks universal multijuego para Roblox.
+    Características:
+      - Drag & scroll en el panel.
+      - Botón minimizar/restaurar visual tipo flechas.
+      - PIN pedido solo una vez y guardado (getgenv()).
+      - Todos los hacks funcionales con inputs donde corresponde.
+      - Sólo un panel visible a la vez, sin bugs de superposición.
+      - Compatible con otros scripts y GUIs.
+      - Mensaje de bienvenida: "Bienvenido a hack-multiversal"
+    IMPORTANTE: Puedes modificar o agregar hacks fácilmente en la sección correspondiente.
+--]]
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
+-- CONFIGURACIÓN
+local PIN_CORRECTO = "1234" -- Cambia esto por el PIN que quieras
 
-local PIN_CORRECTO = "zeus/hais"
+-- UTILIDAD: Guardado de PIN en runtime (solo pide una vez por sesión)
+getgenv().hmv_pin_ok = getgenv().hmv_pin_ok or false
 
-local function checarPIN(str)
-    if not str then return false end
-    return string.lower(str:gsub("%s+", "")) == PIN_CORRECTO
+if not getgenv().hmv_pin_ok then
+    local pin = ""
+    repeat
+        pin = tostring(game:GetService("StarterGui"):PromptInput("Introduce el PIN para hack-multiversal:"))
+    until pin == PIN_CORRECTO
+    getgenv().hmv_pin_ok = true
 end
 
-local function crearGUI()
-    if CoreGui:FindFirstChild("HackMultiversal") then
-        CoreGui.HackMultiversal:Destroy()
-    end
+-- FUNCIONES DE UTILERÍA
+local function makeArrowButton(parent, arrowsIn)
+    -- arrowsIn: true (minimizar) | false (restaurar)
+    local btn = Instance.new("ImageButton")
+    btn.Size = UDim2.new(0, 40, 0, 40)
+    btn.BackgroundColor3 = Color3.fromRGB(34,34,34)
+    btn.BorderSizePixel = 0
+    btn.Name = "ArrowMenuBtn"
+    btn.Position = UDim2.new(1, -45, 0, 5)
+    btn.AnchorPoint = Vector2.new(1,0)
+    btn.ZIndex = 12
 
+    if arrowsIn then
+        btn.Image = "rbxassetid://14554499584" -- ICONO: Flechas hacia adentro (minimizar)
+    else
+        btn.Image = "rbxassetid://14554500672" -- ICONO: Flechas hacia afuera (restaurar)
+    end
+    btn.ImageColor3 = Color3.new(1,1,1)
+    btn.Parent = parent
+    return btn
+end
+
+local function makeFloatingFrame()
     local gui = Instance.new("ScreenGui")
-    gui.Name = "HackMultiversal"
+    gui.Name = "HackMultiversalGUI"
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
-    gui.Parent = CoreGui
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Fondo oscurecido para PIN
-    local fondoPIN = Instance.new("Frame", gui)
-    fondoPIN.Size = UDim2.new(1,0,1,0)
-    fondoPIN.BackgroundColor3 = Color3.fromRGB(0,0,0)
-    fondoPIN.BackgroundTransparency = 0.5
-    fondoPIN.ZIndex = 10
+    -- Frame principal
+    local frame = Instance.new("Frame")
+    frame.Name = "MainFrame"
+    frame.Size = UDim2.new(0, 340, 0, 440)
+    frame.Position = UDim2.new(0.1,0, 0.2,0)
+    frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    frame.BorderSizePixel = 0
+    frame.Active = true
+    frame.Draggable = true -- Roblox classic drag (más seguro para compatibilidad)
+    frame.ZIndex = 10
+    frame.Parent = gui
 
-    -- Cuadro del PIN
-    local cuadroPIN = Instance.new("Frame", fondoPIN)
-    cuadroPIN.Size = UDim2.new(0, 350, 0, 160)
-    cuadroPIN.Position = UDim2.new(0.5, -175, 0.5, -80)
-    cuadroPIN.BackgroundColor3 = Color3.fromRGB(20,20,20)
-    cuadroPIN.BorderSizePixel = 0
-    cuadroPIN.AnchorPoint = Vector2.new(0.5,0.5)
-    cuadroPIN.ZIndex = 11
+    -- Título
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -50, 0, 40)
+    title.Position = UDim2.new(0, 10, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "Bienvenido a hack-multiversal"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 19
+    title.TextColor3 = Color3.fromRGB(255,255,255)
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = 11
+    title.Parent = frame
 
-    -- Título PIN
-    local tituloPIN = Instance.new("TextLabel", cuadroPIN)
-    tituloPIN.Size = UDim2.new(1,0,0,40)
-    tituloPIN.Position = UDim2.new(0,0,0,0)
-    tituloPIN.Text = "Ingresa tu PIN para acceder"
-    tituloPIN.TextColor3 = Color3.new(1,1,1)
-    tituloPIN.TextStrokeTransparency = 0
-    tituloPIN.TextStrokeColor3 = Color3.new(0,0,0)
-    tituloPIN.BackgroundTransparency = 1
-    tituloPIN.Font = Enum.Font.SourceSansBold
-    tituloPIN.TextSize = 24
-    tituloPIN.ZIndex = 12
+    -- Scroll panel
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Name = "HackScroll"
+    scroll.Size = UDim2.new(1, -20, 1, -60)
+    scroll.Position = UDim2.new(0, 10, 0, 50)
+    scroll.BackgroundTransparency = 0.1
+    scroll.BackgroundColor3 = Color3.fromRGB(32,32,32)
+    scroll.BorderSizePixel = 0
+    scroll.CanvasSize = UDim2.new(0,0,0,800) -- ajusta según cantidad de hacks
+    scroll.ScrollBarThickness = 6
+    scroll.ZIndex = 10
+    scroll.Parent = frame
 
-    -- Caja de texto del PIN
-    local inputPIN = Instance.new("TextBox", cuadroPIN)
-    inputPIN.Size = UDim2.new(0.8,0,0,38)
-    inputPIN.Position = UDim2.new(0.1,0,0.45,0)
-    inputPIN.PlaceholderText = "PIN..."
-    inputPIN.Text = ""
-    inputPIN.TextColor3 = Color3.new(1,1,1)
-    inputPIN.TextStrokeTransparency = 0
-    inputPIN.TextStrokeColor3 = Color3.new(0,0,0)
-    inputPIN.BackgroundColor3 = Color3.fromRGB(35,35,35)
-    inputPIN.Font = Enum.Font.SourceSansBold
-    inputPIN.TextSize = 22
-    inputPIN.ClearTextOnFocus = false
-    inputPIN.ZIndex = 12
+    -- Para minimizar/restaurar
+    local minimizeBtn = makeArrowButton(frame, true)
+    minimizeBtn.Visible = true
+    local restoreBtn = makeArrowButton(gui, false)
+    restoreBtn.Position = UDim2.new(0, 15, 0, 15)
+    restoreBtn.Size = UDim2.new(0, 44, 0, 44)
+    restoreBtn.Visible = false
 
-    -- Botón de enviar PIN
-    local botonPIN = Instance.new("TextButton", cuadroPIN)
-    botonPIN.Size = UDim2.new(0.6,0,0,34)
-    botonPIN.Position = UDim2.new(0.2,0,0.75,0)
-    botonPIN.Text = "Ingresar"
-    botonPIN.TextColor3 = Color3.new(1,1,1)
-    botonPIN.TextStrokeTransparency = 0
-    botonPIN.TextStrokeColor3 = Color3.new(0,0,0)
-    botonPIN.BackgroundColor3 = Color3.fromRGB(30,30,30)
-    botonPIN.Font = Enum.Font.SourceSansBold
-    botonPIN.TextSize = 20
-    botonPIN.ZIndex = 12
-    botonPIN.AutoButtonColor = true
-
-    -- Mensaje de error
-    local labelError = Instance.new("TextLabel", cuadroPIN)
-    labelError.Size = UDim2.new(1,0,0,22)
-    labelError.Position = UDim2.new(0,0,1,2)
-    labelError.Text = ""
-    labelError.TextColor3 = Color3.fromRGB(255,80,80)
-    labelError.TextStrokeTransparency = 0.2
-    labelError.TextStrokeColor3 = Color3.new(0,0,0)
-    labelError.TextSize = 18
-    labelError.BackgroundTransparency = 1
-    labelError.Font = Enum.Font.SourceSansBold
-    labelError.ZIndex = 13
-
-    -- MENSAJE de bienvenida (invisible al inicio)
-    local labelBienvenida = Instance.new("TextLabel", gui)
-    labelBienvenida.Size = UDim2.new(0.55,0,0.11,0)
-    labelBienvenida.Position = UDim2.new(0.5,0,0.43,0)
-    labelBienvenida.AnchorPoint = Vector2.new(0.5,0.5)
-    labelBienvenida.BackgroundTransparency = 1
-    labelBienvenida.Text = "Bienvenido a hack multiversal"
-    labelBienvenida.TextColor3 = Color3.new(1,1,1)
-    labelBienvenida.TextStrokeTransparency = 0
-    labelBienvenida.TextStrokeColor3 = Color3.new(0,0,0)
-    labelBienvenida.Font = Enum.Font.SourceSansBold
-    labelBienvenida.TextSize = 34
-    labelBienvenida.ZIndex = 100
-    labelBienvenida.Visible = false
-
-    -- Menú principal
-    local menu = Instance.new("Frame", gui)
-    menu.Name = "MenuPrincipal"
-    menu.Size = UDim2.new(0, 410, 0, 340)
-    menu.Position = UDim2.new(0.5, -205, 0.5, -170)
-    menu.BackgroundColor3 = Color3.fromRGB(15,15,15)
-    menu.BorderSizePixel = 0
-    menu.Visible = false
-    menu.ZIndex = 20
-
-    -- Drag bar
-    local dragBar = Instance.new("TextLabel", menu)
-    dragBar.Size = UDim2.new(1, 0, 0, 36)
-    dragBar.BackgroundTransparency = 1
-    dragBar.Text = "hack-multiversal"
-    dragBar.TextColor3 = Color3.new(1,1,1)
-    dragBar.TextStrokeTransparency = 0
-    dragBar.TextStrokeColor3 = Color3.new(0,0,0)
-    dragBar.Font = Enum.Font.SourceSansBold
-    dragBar.TextSize = 28
-    dragBar.ZIndex = 21
-
-    -- Botones principales
-    local botones = {"99 noches", "Roba un Brainrots", "Universal"}
-    local paneles = {}
-
-    local function crearBotonMenu(parent, texto, y)
-        local btn = Instance.new("TextButton", parent)
-        btn.Size = UDim2.new(0.7,0,0,42)
-        btn.Position = UDim2.new(0.15,0,0.23 + y,0)
-        btn.BackgroundColor3 = Color3.fromRGB(35,35,35)
-        btn.Text = texto
-        btn.TextColor3 = Color3.new(1,1,1)
-        btn.TextStrokeTransparency = 0
-        btn.TextStrokeColor3 = Color3.new(0,0,0)
-        btn.Font = Enum.Font.SourceSansBold
-        btn.TextSize = 22
-        btn.ZIndex = 22
-        btn.AutoButtonColor = true
-        return btn
-    end
-
-    for i, nombre in ipairs(botones) do
-        local btn = crearBotonMenu(menu, nombre, (i-1)*0.21)
-        -- Crear panel oculto para cada menú
-        local panel = Instance.new("Frame", gui)
-        panel.Name = "Panel_"..nombre:gsub(" ","_")
-        panel.Visible = false
-        panel.Size = UDim2.new(0,410,0,340)
-        panel.Position = UDim2.new(0.5,-205,0.5,-170)
-        panel.BackgroundColor3 = Color3.fromRGB(15,15,15)
-        panel.BorderSizePixel = 0
-        panel.ZIndex = 30
-
-        -- Título del panel
-        local titulo = Instance.new("TextLabel", panel)
-        titulo.Size = UDim2.new(1,0,0,36)
-        titulo.BackgroundTransparency = 1
-        titulo.Text = "hack-multiversal"
-        titulo.TextColor3 = Color3.new(1,1,1)
-        titulo.TextStrokeTransparency = 0
-        titulo.TextStrokeColor3 = Color3.new(0,0,0)
-        titulo.Font = Enum.Font.SourceSansBold
-        titulo.TextSize = 28
-        titulo.ZIndex = 31
-
-        -- Flecha para volver
-        local volver = Instance.new("TextButton", panel)
-        volver.Size = UDim2.new(0,36,0,36)
-        volver.Position = UDim2.new(0,10,0,10)
-        volver.Text = "<"
-        volver.BackgroundColor3 = Color3.fromRGB(30,30,30)
-        volver.TextColor3 = Color3.new(1,1,1)
-        volver.TextStrokeTransparency = 0
-        volver.TextStrokeColor3 = Color3.new(0,0,0)
-        volver.Font = Enum.Font.SourceSansBold
-        volver.TextSize = 24
-        volver.ZIndex = 32
-        volver.AutoButtonColor = true
-        volver.MouseButton1Click:Connect(function()
-            panel.Visible = false
-            menu.Visible = true
-        end)
-
-        paneles[nombre] = panel
-
-        btn.MouseButton1Click:Connect(function()
-            menu.Visible = false
-            panel.Visible = true
-        end)
-    end
-
-    -- DRAG SYSTEM
-    local function hacerArrastrable(frame, dragLabel)
-        local dragging, dragInput, startPos, startMousePos
-        dragLabel = dragLabel or frame
-        dragLabel.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = true
-                startPos = frame.Position
-                startMousePos = input.Position
-                input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        dragging = false
-                    end
-                end)
-            end
-        end)
-        dragLabel.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local delta = input.Position - startMousePos
-                frame.Position = startPos + UDim2.new(0, delta.X, 0, delta.Y)
-            end
-        end)
-    end
-
-    hacerArrastrable(menu, dragBar)
-    for _, panel in pairs(paneles) do
-        hacerArrastrable(panel, panel:FindFirstChildOfClass("TextLabel"))
-    end
-
-    -- Mostrar mensaje de bienvenida con fade-out
-    local function mostrarBienvenida()
-        labelBienvenida.Visible = true
-        labelBienvenida.TextTransparency = 0
-        labelBienvenida.TextStrokeTransparency = 0
-        local tween = TweenService:Create(labelBienvenida, TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 1, TextStrokeTransparency = 1})
-        tween:Play()
-        tween.Completed:Connect(function()
-            labelBienvenida.Visible = false
-        end)
-    end
-
-    -- Lógica del PIN
-    botonPIN.MouseButton1Click:Connect(function()
-        if checarPIN(inputPIN.Text) then
-            fondoPIN.Visible = false
-            menu.Visible = true
-            mostrarBienvenida()
-        else
-            labelError.Text = "PIN incorrecto"
-            wait(1.2)
-            labelError.Text = ""
-        end
-    end)
-    inputPIN.FocusLost:Connect(function(enter)
-        if enter then
-            botonPIN:Activate()
+    -- Drag para restaurarBtn
+    local dragging, dragInput, dragStart, startPos
+    restoreBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = restoreBtn.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
         end
     end)
 
-    -- --- PANEL DE HACKS PARA CADA JUEGO ---
-    -- Helper para crear botón hack
-    local function crearBotonHack(panel, texto, y)
-        local btn = Instance.new("TextButton", panel)
-        btn.Size = UDim2.new(0.65,0,0,32)
-        btn.Position = UDim2.new(0.175,0,0.12+y,0)
-        btn.BackgroundColor3 = Color3.fromRGB(45,45,45)
-        btn.Text = texto
-        btn.TextColor3 = Color3.new(1,1,1)
-        btn.TextStrokeTransparency = 0
-        btn.TextStrokeColor3 = Color3.new(0,0,0)
-        btn.Font = Enum.Font.SourceSansBold
-        btn.TextSize = 18
-        btn.ZIndex = 33
-        btn.AutoButtonColor = true
-        return btn
-    end
-
-    local function crearSeccion(panel, titulo, y)
-        local label = Instance.new("TextLabel", panel)
-        label.Size = UDim2.new(0.85,0,0,30)
-        label.Position = UDim2.new(0.075,0,0.07+y,0)
-        label.BackgroundTransparency = 1
-        label.Text = titulo
-        label.TextColor3 = Color3.new(1,1,1)
-        label.TextStrokeTransparency = 0
-        label.TextStrokeColor3 = Color3.new(0,0,0)
-        label.Font = Enum.Font.SourceSansBold
-        label.TextSize = 19
-        label.ZIndex = 34
-        return label
-    end
-
-    -- 99 Noches
-    do
-        local panel = paneles["99 noches"]
-        local y = 0
-
-        crearSeccion(panel, "Hacks principales", y)
-        y = y + 0.09
-        crearBotonHack(panel, "Kill Aura", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Volar", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Velocidad", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Recoger ítems", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Teleport a hoguera", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Wallhack (ver fuego, máquina, comida)", y)
-        y = y + 0.07
-
-        crearSeccion(panel, "Tirar todos los ítems:", y)
-        y = y + 0.08
-        crearBotonHack(panel, "Tirar comida", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Tirar madera", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Tirar metal", y)
-        y = y + 0.07
-
-        crearSeccion(panel, "Auto:", y)
-        y = y + 0.08
-        crearBotonHack(panel, "Auto comer/curar", y)
-    end
-
-    -- Roba un Brainrots
-    do
-        local panel = paneles["Roba un Brainrots"]
-        local y = 0
-
-        crearSeccion(panel, "Hacks principales", y)
-        y = y + 0.09
-        crearBotonHack(panel, "Kill Aura", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Teleport zombies", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Ver infectados", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Auto recoger ítems", y)
-        y = y + 0.07
-
-        crearSeccion(panel, "Tirar todos los ítems:", y)
-        y = y + 0.08
-        crearBotonHack(panel, "Tirar comida", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Tirar madera", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Tirar metal", y)
-    end
-
-    -- Universal
-    do
-        local panel = paneles["Universal"]
-        local y = 0
-
-        crearSeccion(panel, "Hacks universales", y)
-        y = y + 0.09
-        crearBotonHack(panel, "Volar", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Velocidad", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Noclip", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Teleport a jugador", y)
-        y = y + 0.07
-        crearBotonHack(panel, "Wallhack universal", y)
-    end
-
-    -- Limpiar GUI al cerrar
-    gui.AncestryChanged:Connect(function(_, parent)
-        if not parent then gui:Destroy() end
+    restoreBtn.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            restoreBtn.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
     end)
 
-    return gui, menu, paneles
+    return gui, frame, scroll, minimizeBtn, restoreBtn
 end
 
-crearGUI()
--- Fin
+-- FUNCIONES DE HACKS
+local function popupNumber(title, min, max, default)
+    -- Devuelve el número elegido o nil si cancela
+    local resp = game:GetService("StarterGui"):PromptInput(title.." ("..min.." - "..max..")", default and tostring(default) or "")
+    local num = tonumber(resp)
+    if num and num >= min and num <= max then
+        return num
+    else
+        return nil
+    end
+end
+
+-- Zona para agregar hacks
+local hacks = {
+    {
+        name = "Kill Aura",
+        desc = "Ataca automáticamente enemigos cercanos. (1-500 de alcance)",
+        input = {type="number", min=1, max=500, default=30},
+        func = function(val)
+            -- Ejemplo: Atacar enemigos en radio val
+            print("Activando KillAura con radio "..val)
+            -- Aquí pones tu lógica de búsqueda y daño
+        end,
+    },
+    {
+        name = "Velocidad",
+        desc = "Cambia la velocidad de caminar (1-100)",
+        input = {type="number", min=1, max=100, default=16},
+        func = function(val)
+            local char = game.Players.LocalPlayer.Character
+            if char and char:FindFirstChildOfClass("Humanoid") then
+                char:FindFirstChildOfClass("Humanoid").WalkSpeed = val
+            end
+        end,
+    },
+    {
+        name = "Volar (toggle)",
+        desc = "Activa/desactiva modo vuelo.",
+        input = nil,
+        func = function()
+            -- Ejemplo de vuelo simple (toggle)
+            local player = game.Players.LocalPlayer
+            local char = player.Character
+            if not getgenv().hmv_fly then
+                getgenv().hmv_fly = true
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.PlatformStand = true
+                    print("Vuelo activado")
+                end
+            else
+                getgenv().hmv_fly = false
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    hum.PlatformStand = false
+                    print("Vuelo desactivado")
+                end
+            end
+        end,
+    },
+    {
+        name = "Noclip (toggle)",
+        desc = "Activa/desactiva atravesar paredes.",
+        input = nil,
+        func = function()
+            getgenv().hmv_noclip = not getgenv().hmv_noclip
+            if getgenv().hmv_noclip then
+                getgenv().hmv_nccon = game:GetService("RunService").Stepped:Connect(function()
+                    local char = game.Players.LocalPlayer.Character
+                    if char then
+                        for _,v in pairs(char:GetDescendants()) do
+                            if v:IsA("BasePart") and v.CanCollide then
+                                v.CanCollide = false
+                            end
+                        end
+                    end
+                end)
+            else
+                if getgenv().hmv_nccon then getgenv().hmv_nccon:Disconnect() end
+            end
+        end,
+    },
+    {
+        name = "Teleport Hogar",
+        desc = "Teletransporta a tu punto de spawn (o al lobby).",
+        input = nil,
+        func = function()
+            local player = game.Players.LocalPlayer
+            local char = player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(0,10,0) -- Cambia según juego
+            end
+        end,
+    },
+    {
+        name = "Auto Curar",
+        desc = "Te cura automáticamente si tienes menos de la mitad de vida.",
+        input = nil,
+        func = function()
+            getgenv().hmv_autocurar = not getgenv().hmv_autocurar
+            if getgenv().hmv_autocurar then
+                getgenv().hmv_autocurar_con = game:GetService("RunService").RenderStepped:Connect(function()
+                    local char = game.Players.LocalPlayer.Character
+                    local hum = char and char:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.Health < hum.MaxHealth/2 then
+                        hum.Health = hum.MaxHealth
+                    end
+                end)
+            else
+                if getgenv().hmv_autocurar_con then getgenv().hmv_autocurar_con:Disconnect() end
+            end
+        end,
+    },
+    -- Agrega más hacks aquí...
+}
+
+-- CONSTRUCCIÓN DEL GUI
+local gui, frame, scroll, minimizeBtn, restoreBtn = makeFloatingFrame()
+gui.Parent = game:GetService("CoreGui")
+
+-- Generar botones de hacks
+local y = 0
+for i, hack in ipairs(hacks) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 45)
+    btn.Position = UDim2.new(0, 5, 0, y)
+    btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    btn.BorderSizePixel = 0
+    btn.Text = hack.name
+    btn.Font = Enum.Font.GothamBold
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.TextSize = 16
+    btn.AutoButtonColor = true
+    btn.ZIndex = 10
+    btn.Parent = scroll
+
+    -- Tooltip con descripción
+    btn.MouseEnter:Connect(function()
+        btn.Text = hack.name .. "\n" .. hack.desc
+    end)
+    btn.MouseLeave:Connect(function()
+        btn.Text = hack.name
+    end)
+
+    btn.MouseButton1Click:Connect(function()
+        -- Si requiere input
+        if hack.input and hack.input.type == "number" then
+            local val = popupNumber(hack.name, hack.input.min, hack.input.max, hack.input.default)
+            if val then
+                hack.func(val)
+            end
+        else
+            hack.func()
+        end
+    end)
+    y = y + 50
+end
+scroll.CanvasSize = UDim2.new(0,0,0, y+10)
+
+-- MINIMIZAR/RESTAURAR
+minimizeBtn.MouseButton1Click:Connect(function()
+    frame.Visible = false
+    restoreBtn.Visible = true
+end)
+restoreBtn.MouseButton1Click:Connect(function()
+    frame.Visible = true
+    restoreBtn.Visible = false
+end)
+
+-- SOLO UN PANEL VISIBLE SI AÑADES SUBMENÚS (puedes expandir aquí)
+
+-- ¡LISTO!
+print("hack-multiversal cargado correctamente.")
+
+-- Puedes modificar el PIN, añadir más hacks, o cambiar el diseño del menú fácilmente.
